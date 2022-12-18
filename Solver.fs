@@ -1,5 +1,6 @@
 module day16_2_2.Solver
 
+open System.Diagnostics.Contracts
 open day16_2_2.BaseTypes
 open day16_2_2.State
 open day16_2_2.Utils
@@ -58,12 +59,27 @@ let updateCache (state: State) (cache: Cache) (track: Track) =
 
 let addToTrack (track: Track) (state: State) = track
 
+let bestScore(closed:Map<string,int>) (time:int) =
+    (closed.Values |> Seq.sum) * time // initial - opens all at once now
+    // if closed.IsEmpty then 0
+    // let values = closed.Values |> Seq.sort | Seq.rev |> Seq.toList
+    // let highest = closed.Values |> Seq.max
+    // match values 
+
+let cantBeatTheScore (state:State) (cache: Cache) (track:Track) =
+    let canEarn = bestScore state.Closed track.Time
+    let potential = track.Score + canEarn
+    cache.BestScore > potential 
+
 let rec solve (depth: int) (state: State) (cache: Cache) (track: Track) : Cache =
     let prefix = " " |> String.replicate depth
     // printfn $"{prefix}solve: {state} {cache} {track}"
     // printfn $"{prefix}solve {state.You} {state.Ele} {state.Opened} {track.youVisited} {track.youOpened}"
-
-    if track.Time < 1 || state.Closed.IsEmpty then
+    let tooLowScore = cantBeatTheScore state cache track 
+    // printfn $"{prefix} {cache.BestScore} {track.Score} {track.Time} {bestScore state.Closed track.Time} {tooLowScore}"
+    if cantBeatTheScore state cache track then 
+        cache
+    elif track.Time < 1 || state.Closed.IsEmpty then
         cache.RegisterScore track.Score
     elif beenBetter state cache track then
         cache.RegisterScore track.Score
