@@ -2,7 +2,7 @@
 open day16_2_2.Solver
 open day16_2_2.SeverGraph
 
-let state = readValveMap "/tmp/aoc/input.16.t"
+let state = readValveMap "/tmp/aoc/input.16"
 
 state |> printfn "%A"
 

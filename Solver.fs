@@ -25,6 +25,17 @@ let findMoves (state: State) =
             moves
 
     moves
+    
+let sortMovesByValue (moves:(string*string) list) (state:State) : (string*string) list =
+    let valueOf id =
+        if id = "o" then 1000
+        elif state.Closed.ContainsKey id then state.Closed[id]
+        else 0
+    moves |> List.map (fun (y,e) -> (valueOf y, valueOf e,y,e))
+          |> List.sort
+          |> List.map (fun (_,_,y,e) -> (y,e))
+         
+        
 
 let beenBetter (state: State) (cache: Cache) (track: Track) =
     let key = state.You, state.Ele, track.Time
@@ -64,19 +75,46 @@ let bestScore(closed:Map<string,int>) (time:int) =
     // if closed.IsEmpty then 0
     // let values = closed.Values |> Seq.sort | Seq.rev |> Seq.toList
     // let highest = closed.Values |> Seq.max
-    // match values 
+    // match values
+
+let bestScore2 (closed:Map<string,int>) (time:int) =
+    let time = max (time - 1) 0
+    let v = closed.Values |> Seq.sort |> Seq.rev |> Seq.toList
+    let v = if v.Length > time then v |> List.take time else v 
+    // if closed.Values.Count > time then printfn $"LOTS {closed.Values |>Seq.sum} {v |> List.sum}"
+    (v |> List.sum) * time  
+
+let bestScore3 (closed:Map<string,int>) (time:int) : int =
+    // let time = max (time - 1) 0
+    let v = closed.Values |> Seq.toList |> Seq.sort |> Seq.rev |> Seq.toList 
+    // printfn $"v{v}"
+    let rec iter (v: int list) (time:int) : int =
+        if time < 1 then 0
+        else
+            match v with
+            | [] -> 0
+            | [_] -> 0
+            | a::b::rest -> ((a+b)*time) + (iter rest (time-2))
+    iter v time 
 
 let cantBeatTheScore (state:State) (cache: Cache) (track:Track) =
-    let canEarn = bestScore state.Closed track.Time
+    let canEarn = bestScore2 state.Closed track.Time
     let potential = track.Score + canEarn
     cache.BestScore > potential 
 
 let rec solve (depth: int) (state: State) (cache: Cache) (track: Track) : Cache =
+    let cache = cache.RegisterScore 1617 // can't do worse than alone / 2171
     let prefix = " " |> String.replicate depth
     // printfn $"{prefix}solve: {state} {cache} {track}"
     // printfn $"{prefix}solve {state.You} {state.Ele} {state.Opened} {track.youVisited} {track.youOpened}"
-    let tooLowScore = cantBeatTheScore state cache track 
-    // printfn $"{prefix} {cache.BestScore} {track.Score} {track.Time} {bestScore state.Closed track.Time} {tooLowScore}"
+    let tooLowScore = cantBeatTheScore state cache track
+    // let bs1 = bestScore  state.Closed track.Time 
+    // let bs2 = bestScore2 state.Closed track.Time 
+    // let bs3 = bestScore3 state.Closed track.Time
+    // printfn $"BEST REM: {bs1} {bs2} {bs3}"
+    if (depth = 4) then
+        printfn $"{prefix} {cache.BestScore} {track.Score} {track.Time} {bestScore state.Closed track.Time} {tooLowScore}"
+    // bestScore2 state.Closed track.Time
     if cantBeatTheScore state cache track then 
         cache
     elif track.Time < 1 || state.Closed.IsEmpty then
@@ -88,6 +126,7 @@ let rec solve (depth: int) (state: State) (cache: Cache) (track: Track) : Cache 
         let cache = updateCache state cache track
         let track = addToTrack track state
         let moves = findMoves state
+        let moves = sortMovesByValue moves state 
 
         let rec iter (moves: (string * string) list) (cache: Cache) =
             match moves with
@@ -102,7 +141,6 @@ let rec solve (depth: int) (state: State) (cache: Cache) (track: Track) : Cache 
                         let state = state.Update move
                         solve (depth + 1) state cache track
                 iter rest cache
-
         iter moves cache
 
 let solution (state: State) (time: int) =
